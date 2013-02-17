@@ -170,16 +170,6 @@ jtUtil =
     else
       return str.substring(0, index) + '...'
   ###*
-   * resIsAvailable 判断response是否可用
-   * @param  {response} res response对象
-   * @return {Boolean}
-  ###
-  resIsAvailable : (res) ->
-    if res.headerSent
-      return false
-    else
-      return true
-  ###*
    * parseLess 编译less
    * @param  {String} data less的内容
    * @param  {Object} options 编译的选项
