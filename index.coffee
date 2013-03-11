@@ -9,6 +9,7 @@ fs = require 'fs'
 mkdirp = require 'mkdirp'
 less = require 'less'
 coffeeScript = require 'coffee-script'
+stylus = require 'stylus'
 path = require 'path'
 zlib = require 'zlib'
 uglifyJS = require 'uglify-js'
@@ -47,6 +48,16 @@ jtUtil =
                   paths : [path.dirname file]
                   compress : true
                 jtUtil.parseLess data, options, func
+          when '.styl'
+          then handle = _.wrap handle, (func, err, data) ->
+              if err
+                func err, data
+              else
+                options = 
+                  paths : [path.dirname file]
+                  filename : file
+                  compress : true
+                jtUtil.parseStylus data, options, func
           when '.coffee'
           then handle = _.wrap handle, (func, err, data) ->
               if err
@@ -138,9 +149,10 @@ jtUtil =
     checkFunctions = []
     _.each requireExts, (ext) ->
       checkFunctions.push (cbf) ->
+        checkFile = file
         if ext
-          file += ".#{ext}"
-        fs.exists file, (exists) ->
+          checkFile += ".#{ext}"
+        fs.exists checkFile, (exists) ->
           cbf null, exists
     async.parallel checkFunctions, (err, results) ->
       cbf _.any results
@@ -207,6 +219,16 @@ jtUtil =
     cbf null, jsStr
     return @
   ###*
+   * parseStylus 编译stylus
+   * @param  {String} data stylus内容
+   * @param  {Object} options 编译选项
+   * @param  {Function} cbf 回调函数
+   * @return {jtUtil}
+  ###
+  parseStylus : (data, options, cbf) ->
+    stylus.render data, options, cbf
+    return @
+  ###*
    * [response 响应http请求]
    * @param  {[type]} res         [response对象]
    * @param  {[type]} data        [响应的数据]
@@ -215,8 +237,8 @@ jtUtil =
    * @return {[type]}             [description]
   ###
   response : (res, data, maxAge, contentType = 'text/html') ->
-    if !@resIsAvailable res
-      return 
+    # if !@resIsAvailable res
+      # return 
     switch contentType
       when 'application/javascript'
       then res.header 'Content-Type', 'application/javascript; charset=UTF-8'

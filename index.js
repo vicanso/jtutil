@@ -6,7 +6,7 @@
 
 
 (function() {
-  var async, coffeeScript, fs, jtUtil, less, mkdirp, noop, path, uglifyJS, zlib, _;
+  var async, coffeeScript, fs, jtUtil, less, mkdirp, noop, path, stylus, uglifyJS, zlib, _;
 
   _ = require('underscore');
 
@@ -19,6 +19,8 @@
   less = require('less');
 
   coffeeScript = require('coffee-script');
+
+  stylus = require('stylus');
 
   path = require('path');
 
@@ -70,6 +72,21 @@
                     compress: true
                   };
                   return jtUtil.parseLess(data, options, func);
+                }
+              });
+              break;
+            case '.styl':
+              handle = _.wrap(handle, function(func, err, data) {
+                var options;
+                if (err) {
+                  return func(err, data);
+                } else {
+                  options = {
+                    paths: [path.dirname(file)],
+                    filename: file,
+                    compress: true
+                  };
+                  return jtUtil.parseStylus(data, options, func);
                 }
               });
               break;
@@ -195,10 +212,12 @@
       checkFunctions = [];
       _.each(requireExts, function(ext) {
         return checkFunctions.push(function(cbf) {
+          var checkFile;
+          checkFile = file;
           if (ext) {
-            file += "." + ext;
+            checkFile += "." + ext;
           }
-          return fs.exists(file, function(exists) {
+          return fs.exists(checkFile, function(exists) {
             return cbf(null, exists);
           });
         });
@@ -237,19 +256,6 @@
         return str;
       } else {
         return str.substring(0, index) + '...';
-      }
-    },
-    /**
-     * resIsAvailable 判断response是否可用
-     * @param  {response} res response对象
-     * @return {Boolean}
-    */
-
-    resIsAvailable: function(res) {
-      if (res.headerSent) {
-        return false;
-      } else {
-        return true;
       }
     },
     /**
@@ -302,6 +308,18 @@
       return this;
     },
     /**
+     * parseStylus 编译stylus
+     * @param  {String} data stylus内容
+     * @param  {Object} options 编译选项
+     * @param  {Function} cbf 回调函数
+     * @return {jtUtil}
+    */
+
+    parseStylus: function(data, options, cbf) {
+      stylus.render(data, options, cbf);
+      return this;
+    },
+    /**
      * [response 响应http请求]
      * @param  {[type]} res         [response对象]
      * @param  {[type]} data        [响应的数据]
@@ -313,9 +331,6 @@
     response: function(res, data, maxAge, contentType) {
       if (contentType == null) {
         contentType = 'text/html';
-      }
-      if (!this.resIsAvailable(res)) {
-        return;
       }
       switch (contentType) {
         case 'application/javascript':
