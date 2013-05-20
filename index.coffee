@@ -204,17 +204,17 @@ jtUtil =
   ###*
    * parseCoffee 编译coffee
    * @param  {String} data coffee内容
-   * @param  {Object} options 编译选项
+   * @param  {Object} minifyOptions 编译选项
    * @param  {Function} cbf 回调函数
    * @return {jtUtil}
   ###
-  parseCoffee : (data, options, cbf) ->
+  parseCoffee : (data, minifyOptions, cbf) ->
     jsStr = coffeeScript.compile data
-    if _.isFunction options
-      cbf = options
-      options = null
-    if options
-      minifyCode = uglifyJS.minify jsStr, options
+    if _.isFunction minifyOptions
+      cbf = minifyOptions
+      minifyOptions = null
+    if minifyOptions
+      minifyCode = uglifyJS.minify jsStr, minifyOptions
       jsStr = minifyCode.code
     cbf null, jsStr
     return @
@@ -305,7 +305,33 @@ jtUtil =
         func t.concat(a[i]), a.slice(i + 1), n - 1
     func [], arr, num
     return r
-
-
+  ###*
+   * memoize memoize处理
+   * @param  {Function} fn 原始函数
+   * @param  {Function} {optional} hasher 生成hash值的函数，默认为使用fn中的第一个参数作为key
+   * @param  {Integer} {optional} ttl 结果的缓存时间(ms)，为0的时候用于控制同一时间所进行的同样的任务处理（若当前有同样的任务未完成，后续的任务使用当前任务的结果返回），不对结果缓存
+   * @return {Function} 返回新的函数（其函数处理的结果会缓存）
+  ###
+  memoize : (fn, hasher, ttl) ->
+    if _.isNumber hasher
+      ttl = hasher
+      hasher = null
+    # 如果有设置ttl，则构造新的hasher，当调用hasher时，判断ttls里面有没对应的值，
+    # 如果没有，则为第一次调用，添加ttl，之后每一次调用hasher时，判断ttl是否过期，
+    # 若已过期，则删除memo中的值。
+    if ttl?
+      ttls = {}
+      originnalHasher = hasher || (se) ->
+        se
+      hasher = () ->
+        se = originnalHasher.apply null, arguments
+        if !ttls[se]
+          ttls[se] = Date.now() + ttl
+        else if memo[se] && ttls[se] < Date.now()
+          delete memo[se]
+          ttls[se] = Date.now() + ttl
+        se
+    memoized = async.memoize fn, hasher
+    memo = memoized.memo
+    memoized
 module.exports = jtUtil
-

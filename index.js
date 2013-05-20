@@ -288,20 +288,20 @@
     /**
      * parseCoffee 编译coffee
      * @param  {String} data coffee内容
-     * @param  {Object} options 编译选项
+     * @param  {Object} minifyOptions 编译选项
      * @param  {Function} cbf 回调函数
      * @return {jtUtil}
     */
 
-    parseCoffee: function(data, options, cbf) {
+    parseCoffee: function(data, minifyOptions, cbf) {
       var jsStr, minifyCode;
       jsStr = coffeeScript.compile(data);
-      if (_.isFunction(options)) {
-        cbf = options;
-        options = null;
+      if (_.isFunction(minifyOptions)) {
+        cbf = minifyOptions;
+        minifyOptions = null;
       }
-      if (options) {
-        minifyCode = uglifyJS.minify(jsStr, options);
+      if (minifyOptions) {
+        minifyCode = uglifyJS.minify(jsStr, minifyOptions);
         jsStr = minifyCode.code;
       }
       cbf(null, jsStr);
@@ -435,6 +435,41 @@
       };
       func([], arr, num);
       return r;
+    },
+    /**
+     * memoize memoize处理
+     * @param  {Function} fn 原始函数
+     * @param  {Function} {optional} hasher 生成hash值的函数，默认为使用fn中的第一个参数作为key
+     * @param  {Integer} {optional} ttl 结果的缓存时间(ms)
+     * @return {Function} 返回新的函数（其函数处理的结果会缓存）
+    */
+
+    memoize: function(fn, hasher, ttl) {
+      var memo, memoized, originnalHasher, ttls;
+      if (_.isNumber(hasher)) {
+        ttl = hasher;
+        hasher = null;
+      }
+      if (ttl) {
+        ttls = {};
+        originnalHasher = hasher || function(se) {
+          return se;
+        };
+        hasher = function() {
+          var se;
+          se = originnalHasher.apply(null, arguments);
+          if (!ttls[se]) {
+            ttls[se] = Date.now() + ttl;
+          } else if (memo[se] && ttls[se] < Date.now()) {
+            delete memo[se];
+            ttls[se] = Date.now() + ttl;
+          }
+          return se;
+        };
+      }
+      memoized = async.memoize(fn, hasher);
+      memo = memoized.memo;
+      return memoized;
     }
   };
 
