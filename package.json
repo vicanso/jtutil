@@ -3,7 +3,7 @@
   "description" : "util",
   "version" : "0.0.1",
   "author" : {
-    "name" : "vicanso 腻味",
+    "name" : "vicanso 墨鱼仔",
     "email" : "vicansocanbico@gmail.com"
   },
   "keywords" : [
@@ -11,10 +11,6 @@
   ],
   "dependencies" : {
     "underscore" : "latest",
-    "async" : "latest",
-    "mkdirp" : "latest",
-    "less" : "latest",
-    "coffee-script" : "latest",
-    "uglify-js" : "latest"
+    "async" : "latest"
   }
 }

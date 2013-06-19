@@ -1,12 +1,12 @@
 
 /**!
-* Copyright(c) 2012 vicanso 腻味
+* Copyright(c) 2012 vicanso 墨鱼仔
 * MIT Licensed
 */
 
 
 (function() {
-  var async, coffeeScript, fs, jtUtil, less, mkdirp, noop, path, stylus, uglifyJS, zlib, _;
+  var async, fs, jtUtil, noop, path, zlib, _;
 
   _ = require('underscore');
 
@@ -14,114 +14,13 @@
 
   fs = require('fs');
 
-  mkdirp = require('mkdirp');
-
-  less = require('less');
-
-  coffeeScript = require('coffee-script');
-
-  stylus = require('stylus');
-
   path = require('path');
 
   zlib = require('zlib');
 
-  uglifyJS = require('uglify-js');
-
   noop = function() {};
 
   jtUtil = {
-    /**
-     * mergeFiles 合并文件
-     * @param  {Array} files 需要合并的文件列表
-     * @param  {String} saveFile 保存的文件
-     * @param  {Function} dataConvert 可选参数，需要对数据做的转化，如果不需要转换，该参数作为完成时的call back
-     * @param  {Function} cbf 完成时的call back
-     * @return {jtUtil}             [description]
-    */
-
-    mergeFiles: function(files, saveFile, dataConvert, cbf) {
-      var funcs;
-      if (cbf == null) {
-        cbf = noop;
-      }
-      funcs = [];
-      if (arguments.length === 3) {
-        cbf = dataConvert;
-        dataConvert = null;
-      }
-      _.each(files, function(file) {
-        return funcs.push(function(cbf) {
-          var ext, handle;
-          handle = function(err, data) {
-            if (!err && dataConvert) {
-              data = dataConvert(data, file, saveFile);
-            }
-            return cbf(err, data);
-          };
-          ext = path.extname(file);
-          switch (ext) {
-            case '.less':
-              handle = _.wrap(handle, function(func, err, data) {
-                var options;
-                if (err) {
-                  return func(err, data);
-                } else {
-                  options = {
-                    paths: [path.dirname(file)],
-                    compress: true
-                  };
-                  return jtUtil.parseLess(data, options, func);
-                }
-              });
-              break;
-            case '.styl':
-              handle = _.wrap(handle, function(func, err, data) {
-                var options;
-                if (err) {
-                  return func(err, data);
-                } else {
-                  options = {
-                    paths: [path.dirname(file)],
-                    filename: file,
-                    compress: true
-                  };
-                  return jtUtil.parseStylus(data, options, func);
-                }
-              });
-              break;
-            case '.coffee':
-              handle = _.wrap(handle, function(func, err, data) {
-                var options;
-                if (err) {
-                  return func(err, data);
-                } else {
-                  options = {
-                    fromString: true,
-                    warnings: true
-                  };
-                  return jtUtil.parseCoffee(data, options, func);
-                }
-              });
-          }
-          return fs.readFile(file, 'utf8', handle);
-        });
-      });
-      async.parallel(funcs, function(err, results) {
-        if (err) {
-          return cbf(err);
-        } else {
-          return mkdirp(path.dirname(saveFile), function(err) {
-            if (err) {
-              return cbf(err);
-            } else {
-              return fs.writeFile(saveFile, results.join(''), cbf);
-            }
-          });
-        }
-      });
-      return this;
-    },
     /**
      * md5 md5加密
      * @param  {String} data 加密的数据
@@ -259,96 +158,6 @@
       }
     },
     /**
-     * parseLess 编译less
-     * @param  {String} data less的内容
-     * @param  {Object} options 编译的选项
-     * @param  {Function} cbf 回调函数
-     * @return {jtUtil}
-    */
-
-    parseLess: function(data, options, cbf) {
-      var env, parser, paths;
-      paths = options.paths;
-      delete options.paths;
-      env = {
-        paths: paths
-      };
-      parser = new less.Parser(env);
-      parser.parse(data, function(err, tree) {
-        var cssStr;
-        if (err) {
-          return cbf(err);
-        } else {
-          cssStr = tree.toCSS(options);
-          return cbf(null, cssStr);
-        }
-      });
-      return this;
-    },
-    /**
-     * parseCoffee 编译coffee
-     * @param  {String} data coffee内容
-     * @param  {Object} minifyOptions 编译选项
-     * @param  {Function} cbf 回调函数
-     * @return {jtUtil}
-    */
-
-    parseCoffee: function(data, minifyOptions, cbf) {
-      var jsStr, minifyCode;
-      jsStr = coffeeScript.compile(data);
-      if (_.isFunction(minifyOptions)) {
-        cbf = minifyOptions;
-        minifyOptions = null;
-      }
-      if (minifyOptions) {
-        minifyCode = uglifyJS.minify(jsStr, minifyOptions);
-        jsStr = minifyCode.code;
-      }
-      cbf(null, jsStr);
-      return this;
-    },
-    /**
-     * parseStylus 编译stylus
-     * @param  {String} data stylus内容
-     * @param  {Object} options 编译选项
-     * @param  {Function} cbf 回调函数
-     * @return {jtUtil}
-    */
-
-    parseStylus: function(data, options, cbf) {
-      stylus.render(data, options, cbf);
-      return this;
-    },
-    /**
-     * [response 响应http请求]
-     * @param  {[type]} res         [response对象]
-     * @param  {[type]} data        [响应的数据]
-     * @param  {[type]} maxAge      [该请求头的maxAge]
-     * @param  {[type]} contentType [返回的contentType(默认为text/html)]
-     * @return {[type]}             [description]
-    */
-
-    response: function(res, data, maxAge, contentType) {
-      if (contentType == null) {
-        contentType = 'text/html';
-      }
-      switch (contentType) {
-        case 'application/javascript':
-          res.header('Content-Type', 'application/javascript; charset=UTF-8');
-          break;
-        case 'text/html':
-          res.header('Content-Type', 'text/html; charset=UTF-8');
-      }
-      if (maxAge === 0) {
-        res.header('Cache-Control', 'no-cache, no-store, max-age=0');
-      } else {
-        res.header('Cache-Control', "public, max-age=" + maxAge);
-      }
-      res.header('Last-Modified', new Date());
-      res.send(data);
-      return this;
-    },
-    /**
      * randomKey description
      * @param  {Number} length 随机数的获取长度，默认为10
      * @param  {String} legalChars 随机字符串字符集
@@ -377,7 +186,6 @@
         }
         return _results;
       })()).join('');
-      return this;
     },
     /**
      * http://mengliao.blog.51cto.com/876134/824079
@@ -440,7 +248,7 @@
      * memoize memoize处理
      * @param  {Function} fn 原始函数
      * @param  {Function} {optional} hasher 生成hash值的函数，默认为使用fn中的第一个参数作为key
-     * @param  {Integer} {optional} ttl 结果的缓存时间(ms)
+     * @param  {Integer} {optional} ttl 结果的缓存时间(ms)，为0的时候用于控制同一时间所进行的同样的任务处理（若当前有同样的任务未完成，后续的任务使用当前任务的结果返回），不对结果缓存
      * @return {Function} 返回新的函数（其函数处理的结果会缓存）
     */
 
@@ -450,7 +258,7 @@
         ttl = hasher;
         hasher = null;
       }
-      if (ttl) {
+      if (ttl != null) {
         ttls = {};
         originnalHasher = hasher || function(se) {
           return se;
