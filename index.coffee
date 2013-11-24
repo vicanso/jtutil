@@ -8,6 +8,7 @@ async = require 'async'
 fs = require 'fs'
 path = require 'path'
 zlib = require 'zlib'
+request = require 'request'
 
 
 noop = () ->
@@ -197,4 +198,36 @@ jtUtil =
     memoized = async.memoize fn, hasher
     memo = memoized.memo
     memoized
-module.exports = jtUtil
+  ###*
+   * request http请求
+   * @param  {String, Object} url 请求的URL地址或者参数
+   * @param  {Integer} {optional} retryTimes 重试的次数
+   * @param  {Function} cbf 回调函数
+   * @return {[type]}            [description]
+  ###
+  request : (url,  retryTimes, cbf) ->
+    if _.isFunction retryTimes
+      cbf = retryTimes
+      retryTimes = 2
+    timeout = 60 * 1000
+    if _.isObject url
+      options = url
+      options.timeout ?= timeout
+    else
+      options = 
+        url : url
+        timeout : timeout
+        encoding : null
+        headers :
+          'Accept-Encoding' : 'gzip'
+    request options, (err, res, body) =>
+      if err
+        if retryTimes > 0
+          @request url, --retryTimes, cbf
+        else
+          cbf err
+      else if res?.headers?['content-encoding'] == 'gzip'
+        zlib.gunzip body, cbf
+      else
+        cbf null, body
+_.extend module.exports, jtUtil

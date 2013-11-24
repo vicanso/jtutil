@@ -1,4 +1,3 @@
-
 /**!
 * Copyright(c) 2012 vicanso 墨鱼仔
 * MIT Licensed
@@ -6,7 +5,7 @@
 
 
 (function() {
-  var async, fs, jtUtil, noop, path, zlib, _;
+  var async, fs, jtUtil, noop, path, request, zlib, _;
 
   _ = require('underscore');
 
@@ -17,6 +16,8 @@
   path = require('path');
 
   zlib = require('zlib');
+
+  request = require('request');
 
   noop = function() {};
 
@@ -278,9 +279,55 @@
       memoized = async.memoize(fn, hasher);
       memo = memoized.memo;
       return memoized;
+    },
+    /**
+     * request http请求
+     * @param  {String, Object} url 请求的URL地址或者参数
+     * @param  {Integer} {optional} retryTimes 重试的次数
+     * @param  {Function} cbf 回调函数
+     * @return {[type]}            [description]
+    */
+
+    request: function(url, retryTimes, cbf) {
+      var options, timeout,
+        _this = this;
+      if (_.isFunction(retryTimes)) {
+        cbf = retryTimes;
+        retryTimes = 2;
+      }
+      timeout = 60 * 1000;
+      if (_.isObject(url)) {
+        options = url;
+        if (options.timeout == null) {
+          options.timeout = timeout;
+        }
+      } else {
+        options = {
+          url: url,
+          timeout: timeout,
+          encoding: null,
+          headers: {
+            'Accept-Encoding': 'gzip'
+          }
+        };
+      }
+      return request(options, function(err, res, body) {
+        var _ref;
+        if (err) {
+          if (retryTimes > 0) {
+            return _this.request(url, --retryTimes, cbf);
+          } else {
+            return cbf(err);
+          }
+        } else if ((res != null ? (_ref = res.headers) != null ? _ref['content-encoding'] : void 0 : void 0) === 'gzip') {
+          return zlib.gunzip(body, cbf);
+        } else {
+          return cbf(null, body);
+        }
+      });
     }
   };
 
-  module.exports = jtUtil;
+  _.extend(module.exports, jtUtil);
 
 }).call(this);
